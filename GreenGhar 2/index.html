@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GreenGhar — Smart Sustainable Living</title>
+  <meta name="description" content="GreenGhar sustainability dashboard with AI waste classification, carbon calculator and community leaderboard.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <!-- AUTH -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="brand big">🌱 <span>GreenGhar</span></div>
+      <p class="muted center">Smart habits. Lower footprint. Greener homes.</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth="login">Login</button>
+        <button class="auth-tab" data-auth="signup">Sign up</button>
+      </div>
+
+      <form id="authForm">
+        <div id="nameGroup" class="field hidden">
+          <label>Full name</label>
+          <input id="authName" type="text" placeholder="Your name">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input id="authEmail" type="email" placeholder="you@example.com" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input id="authPassword" type="password" placeholder="Minimum 6 characters" required minlength="6">
+        </div>
+        <button class="btn primary full" type="submit" id="authSubmit">Login</button>
+      </form>
+      <p class="auth-note">Demo authentication is stored locally in this browser. Do not use a real password.</p>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="app hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">🌱 <span>GreenGhar</span></div>
+      <div class="profile-mini">
+        <div class="avatar" id="sideAvatar">G</div>
+        <div><strong id="sideName">Guest</strong><small id="sideEmail">demo</small></div>
+      </div>
+      <nav>
+        <a href="#overview" class="nav-link active">🏠 Overview</a>
+        <a href="#energy" class="nav-link">⚡ Energy</a>
+        <a href="#water" class="nav-link">💧 Water</a>
+        <a href="#waste" class="nav-link">♻️ Waste AI</a>
+        <a href="#carbon" class="nav-link">🌍 Carbon</a>
+        <a href="#leaderboard" class="nav-link">🏆 Leaderboard</a>
+        <a href="#assistant" class="nav-link">🤖 AI Assistant</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <button id="themeBtn" class="ghost-btn">🌙 Dark mode</button>
+        <button id="logoutBtn" class="ghost-btn danger">↪ Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu">☰</button>
+        <div>
+          <p class="eyebrow">SUSTAINABLE LIVING PLATFORM</p>
+          <h1>Welcome back, <span id="welcomeName">Green Hero</span> 🌿</h1>
+        </div>
+        <div class="top-actions">
+          <span class="model-status" id="modelStatus">AI model loading…</span>
+          <button id="topThemeBtn" class="icon-btn" title="Toggle theme">🌙</button>
+        </div>
+      </header>
+
+      <section id="overview" class="section">
+        <div class="hero-banner">
+          <div>
+            <span class="pill">YOUR HOUSEHOLD IMPACT</span>
+            <h2>Small actions create a bigger green impact.</h2>
+            <p>Track energy, water, waste and carbon habits in one place.</p>
+          </div>
+          <div class="hero-score">
+            <div class="score-ring"><span id="score">75</span></div>
+            <small>Green Score</small>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card"><span class="stat-icon">⚡</span><div><span class="stat-label">Energy</span><strong id="energyStat">0</strong><small>kWh / month</small></div></article>
+          <article class="stat-card"><span class="stat-icon">💧</span><div><span class="stat-label">Water</span><strong id="waterStat">0</strong><small>L / day</small></div></article>
+          <article class="stat-card"><span class="stat-icon">♻️</span><div><span class="stat-label">Waste</span><strong id="wasteStat">0%</strong><small>segregated</small></div></article>
+          <article class="stat-card"><span class="stat-icon">🌍</span><div><span class="stat-label">Carbon</span><strong id="carbonStat">0</strong><small>kg CO₂e / month</small></div></article>
+        </div>
+
+        <div class="grid-2">
+          <article class="panel chart-panel">
+            <div class="panel-head"><div><span class="eyebrow">MONTHLY TRENDS</span><h3>Environmental performance</h3></div><span class="mini-badge">Live from your data</span></div>
+            <canvas id="impactChart"></canvas>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><span class="eyebrow">GREEN SCORE</span><h3>What drives your score?</h3></div></div>
+            <div class="score-bars">
+              <div><div><span>Energy efficiency</span><b id="energyScore">75%</b></div><div class="bar"><i id="energyBar"></i></div></div>
+              <div><div><span>Water efficiency</span><b id="waterScore">75%</b></div><div class="bar"><i id="waterBar"></i></div></div>
+              <div><div><span>Waste segregation</span><b id="wasteScore">0%</b></div><div class="bar"><i id="wasteBar"></i></div></div>
+              <div><div><span>Low-carbon choices</span><b id="carbonScore">75%</b></div><div class="bar"><i id="carbonBar"></i></div></div>
+            </div>
+            <div class="tip-box">💡 <span id="smartTip">Add your energy, water and carbon data to personalize this tip.</span></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ENERGY -->
+      <section id="energy" class="section">
+        <div class="section-title"><span class="eyebrow">ENERGY ANALYZER</span><h2>⚡ Estimate electricity use</h2><p>Calculate appliance-level monthly consumption and get a simple saving tip.</p></div>
+        <div class="grid-2">
+          <article class="panel">
+            <form id="energyForm" class="form-grid">
+              <div class="field"><label>Appliance</label><select id="appliance"><option value="1.5">Air conditioner — 1.5 kW</option><option value="0.75">Refrigerator — 0.75 kW</option><option value="0.075">Fan — 0.075 kW</option><option value="0.01">LED light — 0.01 kW</option><option value="0.2">TV — 0.2 kW</option><option value="0.5">Washing machine — 0.5 kW</option><option value="1">Other — 1 kW</option></select></div>
+              <div class="field"><label>Hours per day</label><input id="hours" type="number" min="0" step="0.1" placeholder="5"></div>
+              <div class="field"><label>Quantity</label><input id="quantity" type="number" min="1" value="1"></div>
+              <button class="btn primary" type="submit">Calculate & Save</button>
+            </form>
+          </article>
+          <article class="result-card energy-result"><span class="result-icon">⚡</span><strong id="energyResult">0 kWh</strong><p>Estimated monthly use</p><span id="energyAdvice" class="result-note">Use efficient appliances and avoid standby power.</span></article>
+        </div>
+      </section>
+
+      <!-- WATER -->
+      <section id="water" class="section alt">
+        <div class="section-title"><span class="eyebrow">WATER TRACKER</span><h2>💧 Track daily water use</h2><p>Enter household water usage to identify possible savings.</p></div>
+        <div class="grid-2">
+          <article class="panel">
+            <form id="waterForm" class="form-grid two">
+              <div class="field"><label>Drinking (L)</label><input id="drinking" type="number" min="0" placeholder="5"></div>
+              <div class="field"><label>Bathing (L)</label><input id="bathing" type="number" min="0" placeholder="50"></div>
+              <div class="field"><label>Kitchen (L)</label><input id="kitchen" type="number" min="0" placeholder="20"></div>
+              <div class="field"><label>Cleaning/other (L)</label><input id="otherWater" type="number" min="0" placeholder="20"></div>
+              <button class="btn primary full" type="submit">Track Water</button>
+            </form>
+          </article>
+          <article class="result-card"><span class="result-icon">💧</span><strong id="waterResult">0 L</strong><p>Daily water usage</p><span id="waterAdvice" class="result-note">A lower household water footprint is better.</span></article>
+        </div>
+      </section>
+
+      <!-- WASTE AI -->
+      <section id="waste" class="section">
+        <div class="section-title"><span class="eyebrow">TENSORFLOW.JS + MOBILENET</span><h2>♻️ AI Waste Classifier</h2><p>Drag an image here or choose one. MobileNet identifies the visible object, then GreenGhar maps it to a waste category when possible.</p></div>
+        <div class="grid-2">
+          <article class="upload-panel" id="dropZone">
+            <div id="preview" class="preview"><div class="camera">📸</div><h3>Drop a waste image here</h3><p>or choose an image from your device</p></div>
+            <input id="wasteFile" type="file" accept="image/*" hidden>
+            <button class="btn primary" id="chooseImage" type="button">Choose image</button>
+            <div class="ai-progress"><div id="aiProgress"></div></div>
+          </article>
+          <article class="panel classifier-result">
+            <div class="ai-label">AI CLASSIFICATION</div>
+            <h3 id="classifierTitle">Waiting for an image</h3>
+            <p id="classifierText">The browser will run the pretrained MobileNet model locally after it loads.</p>
+            <div id="predictions" class="predictions"></div>
+            <div class="waste-category" id="wasteCategory">Category: —</div>
+            <button class="btn secondary" id="markWaste" type="button">Mark as segregated ♻️</button>
+            <p class="tiny">Note: MobileNet is a general ImageNet model, not a waste-specific model. The app uses its object labels + a waste-category mapping. For production-grade waste detection, replace it with a waste-trained TensorFlow.js model.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- CARBON -->
+      <section id="carbon" class="section alt">
+        <div class="section-title"><span class="eyebrow">CARBON FOOTPRINT</span><h2>🌍 Estimate your monthly footprint</h2><p>A transparent demo calculator using simple activity-based emission factors.</p></div>
+        <div class="grid-2">
+          <article class="panel">
+            <form id="carbonForm" class="form-grid two">
+              <div class="field"><label>Electricity (kWh/month)</label><input id="carbonElectricity" type="number" min="0" placeholder="150"></div>
+              <div class="field"><label>Car travel (km/month)</label><input id="carKm" type="number" min="0" placeholder="300"></div>
+              <div class="field"><label>Public transport (km/month)</label><input id="publicKm" type="number" min="0" placeholder="200"></div>
+              <div class="field"><label>LPG / cooking gas (kg/month)</label><input id="lpgKg" type="number" min="0" placeholder="8"></div>
+              <button class="btn primary full" type="submit">Calculate Footprint</button>
+            </form>
+          </article>
+          <article class="carbon-card">
+            <div class="carbon-number"><strong id="carbonResult">0</strong><span>kg CO₂e / month</span></div>
+            <div class="breakdown"><div><span>⚡ Electricity</span><b id="cfElectricity">0</b></div><div><span>🚗 Car</span><b id="cfCar">0</b></div><div><span>🚌 Public transport</span><b id="cfPublic">0</b></div><div><span>🔥 LPG</span><b id="cfLpg">0</b></div></div>
+            <p class="tiny">Demo factors are illustrative and should be replaced with region-specific, verified factors before real-world reporting.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- LEADERBOARD -->
+      <section id="leaderboard" class="section">
+        <div class="section-title"><span class="eyebrow">GREEN COMMUNITY</span><h2>🏆 Leaderboard</h2><p>Friendly competition to encourage sustainable habits.</p></div>
+        <div class="panel">
+          <div class="leader-head"><span>RANK</span><span>MEMBER</span><span>GREEN SCORE</span><span>BADGE</span></div>
+          <div id="leaderRows"></div>
+          <div class="leader-foot">Your score is based on the current browser profile. Community entries are demo data for the prototype.</div>
+        </div>
+      </section>
+
+      <!-- ASSISTANT -->
+      <section id="assistant" class="section alt">
+        <div class="section-title"><span class="eyebrow">GREENGHAR ASSISTANT</span><h2>🤖 Your sustainability assistant</h2><p>Ask questions about electricity, water, recycling, carbon or sustainable living.</p></div>
+        <div class="assistant panel">
+          <div id="chatBox" class="chat-box"><div class="bot-message">Hi! 🌱 I’m GreenGhar. Ask me: “How can I save electricity?”</div></div>
+          <div class="chat-input"><input id="userQuestion" type="text" placeholder="Ask a sustainability question…"><button class="btn primary" id="sendQuestion">Send</button></div>
+          <div class="quick-prompts"><button data-q="How can I save electricity?">⚡ Save energy</button><button data-q="How can I save water?">💧 Save water</button><button data-q="How should I segregate waste?">♻️ Segregate waste</button><button data-q="How can I reduce carbon?">🌍 Reduce carbon</button></div>
+        </div>
+      </section>
+
+      <footer>🌱 <strong>GreenGhar</strong>· Built with HTML, CSS, JavaScript, Chart.js and TensorFlow.js</footer>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
